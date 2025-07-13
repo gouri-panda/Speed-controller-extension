@@ -58,13 +58,21 @@
   }
 
   function positionOverlay(video, overlay) {
-    const rect = video.getBoundingClientRect();
-    Object.assign(overlay.style, {
-      position: 'fixed',
-      top: `${rect.top + 10}px`,
-      left: `${rect.left + 10}px`
-    });
+  const rect = video.getBoundingClientRect();
+  Object.assign(overlay.style, {
+    position: 'fixed',
+    top: `${rect.top + 10}px`,
+    left: `${rect.left + 10}px`
+  });
+
+  const fullscreenEl = document.fullscreenElement;
+  const targetParent = fullscreenEl || document.body;
+
+  if (overlay.parentNode !== targetParent) {
+    targetParent.appendChild(overlay);
   }
+}
+
 
   function reflowAllOverlays() {
     document.querySelectorAll('video').forEach(video => {
