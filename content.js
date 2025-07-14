@@ -4,58 +4,70 @@
   const videoOverlays = new WeakMap();
 
   function ensureOverlay(video) {
-    const existing = videoOverlays.get(video);
-    if (existing && document.body.contains(existing.wrapper)) return existing;
+  const existing = videoOverlays.get(video);
 
-    const wrapper = document.createElement('div');
-    Object.assign(wrapper.style, {
-      position: 'absolute',
-      top: '10px',
-      left: '10px',
-      background: 'rgba(0, 0, 0, 0.4)',
-      color: 'rgba(255, 255, 255, 0.5)',
-      padding: '3px 8px',
-      borderRadius: '4px',
-      fontSize: '13px',
-      fontFamily: 'Arial, sans-serif',
-      zIndex: 1000,
-      pointerEvents: 'none', // 👈 FIX: prevent stealing focus
-      display: 'flex',
-      gap: '6px',
-      alignItems: 'center',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.5)'
-    });
-
-    const text = document.createElement('span');
-    text.textContent = `${video.playbackRate.toFixed(1)}x 🔊`;
-
-    const settings = document.createElement('span');
-    settings.textContent = '⚙';
-    settings.style.cursor = 'pointer';
-    settings.style.pointerEvents = 'auto'; // 👈 allow only gear to be clickable
-
-    settings.onclick = (e) => {
-      e.stopPropagation();
-      const input = prompt("Set mute threshold speed (e.g. 3.5)", muteThreshold);
-      if (input !== null && !isNaN(input)) {
-        muteThreshold = parseFloat(input);
-        localStorage.setItem('muteThreshold', muteThreshold.toString());
-        updateOverlay(video);
-      }
-    };
-
-    wrapper.appendChild(text);
-    wrapper.appendChild(settings);
-    document.body.appendChild(wrapper);
-
-    // Always reposition on DOM changes
-    const observer = new MutationObserver(() => positionOverlay(video, wrapper));
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    positionOverlay(video, wrapper);
-    videoOverlays.set(video, { wrapper, text });
-    return { wrapper, text };
+  // ✅ If overlay exists and is still in the DOM, reuse it
+  if (existing && document.contains(existing.wrapper)) {
+    return existing;
   }
+
+  // 🧹 Cleanup: If overlay exists but detached (was removed from DOM), delete it
+  if (existing && !document.contains(existing.wrapper)) {
+    existing.wrapper.remove();
+    videoOverlays.delete(video);
+  }
+
+  // ✅ Create new overlay
+  const wrapper = document.createElement('div');
+  Object.assign(wrapper.style, {
+    position: 'absolute',
+    top: '10px',
+    left: '10px',
+    background: 'rgba(0, 0, 0, 0.4)',
+    color: 'rgba(255, 255, 255, 0.5)',
+    padding: '3px 8px',
+    borderRadius: '4px',
+    fontSize: '13px',
+    fontFamily: 'Arial, sans-serif',
+    zIndex: 1000,
+    pointerEvents: 'none',
+    display: 'flex',
+    gap: '6px',
+    alignItems: 'center',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.5)'
+  });
+
+  const text = document.createElement('span');
+  text.textContent = `${video.playbackRate.toFixed(1)}x 🔊`;
+
+  const settings = document.createElement('span');
+  settings.textContent = '⚙';
+  settings.style.cursor = 'pointer';
+  settings.style.pointerEvents = 'auto';
+
+  settings.onclick = (e) => {
+    e.stopPropagation();
+    const input = prompt("Set mute threshold speed (e.g. 3.5)", muteThreshold);
+    if (input !== null && !isNaN(input)) {
+      muteThreshold = parseFloat(input);
+      localStorage.setItem('muteThreshold', muteThreshold.toString());
+      updateOverlay(video);
+    }
+  };
+
+  wrapper.appendChild(text);
+  wrapper.appendChild(settings);
+  (document.fullscreenElement || document.body).appendChild(wrapper);
+
+  const observer = new MutationObserver(() => positionOverlay(video, wrapper));
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  positionOverlay(video, wrapper);
+  videoOverlays.set(video, { wrapper, text });
+
+  return { wrapper, text };
+}
+
 
   function positionOverlay(video, overlay) {
   const rect = video.getBoundingClientRect();
